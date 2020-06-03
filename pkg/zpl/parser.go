@@ -31,6 +31,23 @@ const (
 	ERROR
 )
 
+func stateStr(state State) string {
+	switch state {
+	case READY:
+		return "READY"
+	case CARET_COMMAND:
+		return "CARET_COMMAND"
+	case TILDE_COMMAND:
+		return "TILDE_COMMAND"
+	case ARGUMENTS:
+		return "ARGUMENTS"
+	case ERROR:
+		return "ERROR"
+	default:
+		return "UNKNOWN"
+	}
+}
+
 type Parser struct {
 	State    State
 	Error    string
@@ -44,6 +61,7 @@ type Parser struct {
 	currentCmd string
 	currentArg string
 	args       []string
+	argn       int
 	knownCmds  map[string][]formatToken
 }
 
@@ -60,6 +78,7 @@ func newParser() *Parser {
 		currentCmd: "",
 		currentArg: "",
 		args:       make([]string, 0),
+		argn:       0,
 		knownCmds:  commands(),
 	}
 }
@@ -116,8 +135,8 @@ func (p *Parser) feed(char rune) bool {
 		}
 		return true
 	case ARGUMENTS:
-		cmdFmt := p.currentFmt()
-		switch cmdFmt[len(p.args)] {
+		cmdFmt := p.currentFmt()[p.argn]
+		switch cmdFmt {
 		case FMT_BYTE:
 			p.currentArg = string(char)
 			p.finishArg()
@@ -141,6 +160,8 @@ func (p *Parser) feed(char rune) bool {
 			if char != p.delimiter {
 				p.fail("expected delimiter " + string(p.delimiter) + " got " + string(char))
 				return false
+			} else {
+				p.argn += 1
 			}
 		}
 		return true
@@ -153,16 +174,17 @@ func (p *Parser) feed(char rune) bool {
 
 func (p *Parser) finishArg() {
 	p.args = append(p.args, p.currentArg)
+	p.argn += 1
 	p.currentArg = ""
 	fmt := p.currentFmt()
-	if len(p.args) == len(fmt) {
+	if p.argn == len(fmt) {
 		p.emit()
 	}
 }
 
 func (p *Parser) emit() {
-	fmt := p.currentFmt()
-	if len(fmt) > len(p.args) {
+	fmtc := p.currentFmt()
+	if len(fmtc) > p.argn {
 		p.fail("too few arguments: " + p.currentCmd)
 		return
 	}
@@ -182,6 +204,7 @@ func (p *Parser) emit() {
 	p.currentCmd = ""
 	p.currentArg = ""
 	p.args = make([]string, 0)
+	p.argn = 0
 	p.State = READY
 }
 
