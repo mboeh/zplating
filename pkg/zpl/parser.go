@@ -21,17 +21,22 @@ import (
 	"unicode"
 )
 
-type State int
+type ParsingState int
 
 const (
-	READY State = iota
+	// Awaiting a command to parse.
+	READY ParsingState = iota
+	// The caret (^) was found; reading bytes until a command name is found.
 	CARET_COMMAND
+	// The tilde (~) was found; reading bytes until a command name is found.
 	TILDE_COMMAND
+	// A command name was found; parsing the arguments according to that command's format.
 	ARGUMENTS
+	// An error occurred and parsing cannot continue.
 	ERROR
 )
 
-func stateStr(state State) string {
+func stateStr(state ParsingState) string {
 	switch state {
 	case READY:
 		return "READY"
@@ -49,22 +54,30 @@ func stateStr(state State) string {
 }
 
 type Parser struct {
-	State    State
+	State    ParsingState
 	Error    string
 	Commands []Command
 
-	row        int
-	column     int
-	caret      rune
-	tilde      rune
-	delimiter  rune
+	// Source position, for diagnostics.
+	row    int
+	column int
+
+	// Special characters, which can be modified on the fly by commands.
+	caret     rune
+	tilde     rune
+	delimiter rune
+
+	// State for parsing a single command.
 	currentCmd string
 	currentArg string
 	args       []string
 	argn       int
-	knownCmds  map[string][]formatToken
+
+	// Lexicon of known (not necessarily fully supported) commands.
+	knownCmds map[string][]formatToken
 }
 
+// Create a new Parser, ready to start receiving commands.
 func newParser() *Parser {
 	return &Parser{
 		row:        1,
@@ -83,6 +96,8 @@ func newParser() *Parser {
 	}
 }
 
+// Parse a text string (byte by byte), returning false on error.
+// If this returns false, the error is in the Parser's Error field.
 func (p *Parser) feedString(pgm string) bool {
 	for _, c := range pgm {
 		if !p.feed(c) {
@@ -92,6 +107,8 @@ func (p *Parser) feedString(pgm string) bool {
 	return true
 }
 
+// Parse a single byte, returning false on error.
+// If this returns false, the error is in the Parser's Error field.
 func (p *Parser) feed(char rune) bool {
 	if char == '\n' {
 		p.row += 1
