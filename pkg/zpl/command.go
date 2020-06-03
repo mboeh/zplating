@@ -31,6 +31,8 @@ const (
 	FMT_TEXT
 	// Read up to the next delimiter as a string
 	FMT_PARAM
+	// Read and discard a delimiter
+	FMT_DELIMITER
 )
 
 // Commands
@@ -46,23 +48,23 @@ func commands() map[string][]formatToken {
 	pbyte := []formatToken{FMT_BYTE}
 
 	return map[string][]formatToken{
-		"^ADN": p3,
-		"^BC":  p6,
-		"^BY":  p3,
-		"^CC":  pbyte,
-		"~CC":  pbyte,
-		"^CD":  pbyte,
-		"~CD":  pbyte,
-		"^CF":  p3,
-		"^CT":  pbyte,
-		"~CT":  pbyte,
-		"^FD":  p1,
-		"^FO":  p2,
-		"^FR":  p0,
-		"^FS":  p0,
-		"^FX":  p1,
-		"^GB":  p5,
-		"^XA":  p0,
-		"^XZ":  p0,
+		"^A":  {FMT_BYTE, FMT_BYTE, FMT_DELIMITER, FMT_PARAM, FMT_PARAM},
+		"^BC": p6,
+		"^BY": p3,
+		"^CC": pbyte,
+		"~CC": pbyte,
+		"^CD": pbyte,
+		"~CD": pbyte,
+		"^CF": p3,
+		"^CT": pbyte,
+		"~CT": pbyte,
+		"^FD": p1,
+		"^FO": p2,
+		"^FR": p0,
+		"^FS": p0,
+		"^FX": p1,
+		"^GB": p5,
+		"^XA": p0,
+		"^XZ": p0,
 	}
 }

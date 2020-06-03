@@ -2,6 +2,12 @@
 
 WIP parser for ZPL files in Go. Eventual goal is to support some subset of ZPL for rendering to PNG. All that is currently implemented is a pretty printer.
 
+## Dev Notes
+
+- I wish Go had enums and/or sum types.
+  - I wish Go had exhaustiveness checking for `switch`.
+- I wish Go had string literal types like TypeScript.
+
 ## License
 
 ```

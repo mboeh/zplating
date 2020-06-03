@@ -16,7 +16,10 @@
 
 package zpl
 
-import "unicode"
+import (
+	"fmt"
+	"unicode"
+)
 
 type State int
 
@@ -33,6 +36,8 @@ type Parser struct {
 	Error    string
 	Commands []Command
 
+	row        int
+	column     int
 	caret      rune
 	tilde      rune
 	delimiter  rune
@@ -44,6 +49,8 @@ type Parser struct {
 
 func newParser() *Parser {
 	return &Parser{
+		row:        1,
+		column:     1,
 		caret:      '^',
 		tilde:      '~',
 		delimiter:  ',',
@@ -68,8 +75,11 @@ func (p *Parser) feedString(pgm string) bool {
 
 func (p *Parser) feed(char rune) bool {
 	if char == '\n' {
+		p.row += 1
+		p.column = 1
 		return p.State != ERROR
 	}
+	p.column += 1
 	switch p.State {
 	case READY:
 		// Ready for a new command
@@ -111,7 +121,6 @@ func (p *Parser) feed(char rune) bool {
 		case FMT_BYTE:
 			p.currentArg = string(char)
 			p.finishArg()
-			p.emit()
 		case FMT_PARAM:
 			if char == p.delimiter {
 				p.finishArg()
@@ -121,7 +130,6 @@ func (p *Parser) feed(char rune) bool {
 		case FMT_TEXT:
 			if char == p.caret || char == p.tilde {
 				p.finishArg()
-				p.emit()
 				return p.feed(char)
 			} else {
 				p.currentArg += string(char)
@@ -129,6 +137,11 @@ func (p *Parser) feed(char rune) bool {
 		case FMT_NONE:
 			p.fail("too many arguments")
 			return false
+		case FMT_DELIMITER:
+			if char != p.delimiter {
+				p.fail("expected delimiter " + string(p.delimiter) + " got " + string(char))
+				return false
+			}
 		}
 		return true
 	case ERROR:
@@ -141,6 +154,10 @@ func (p *Parser) feed(char rune) bool {
 func (p *Parser) finishArg() {
 	p.args = append(p.args, p.currentArg)
 	p.currentArg = ""
+	fmt := p.currentFmt()
+	if len(p.args) == len(fmt) {
+		p.emit()
+	}
 }
 
 func (p *Parser) emit() {
@@ -170,7 +187,7 @@ func (p *Parser) emit() {
 
 func (p *Parser) fail(err string) {
 	p.State = ERROR
-	p.Error = err
+	p.Error = fmt.Sprintf("%d:%d:%s", p.row, p.column, err)
 }
 
 func (p *Parser) currentFmt() []formatToken {
